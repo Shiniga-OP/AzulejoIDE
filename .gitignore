@@ -1,0 +1,21 @@
+# saidas de compilação do android
+/app/bin/
+/app/build/
+/app/gen/
+
+# ignore o cache do gradle
+.gradle
+
+# ignore a saida de compilação do gradle
+build
+
+# ignore .cache
+.cache
+
+# ignore aplicativos tmp
+*.apk
+*.aab
+
+# ignore .settings
+.settings/
+app/.settings/
