@@ -1,4 +1,4 @@
-package com.azulejo.projeto;
+package com.apkc.projeto;
 
 public class Projeto {
 	public String java;

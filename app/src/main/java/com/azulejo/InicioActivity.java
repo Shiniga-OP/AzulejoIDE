@@ -1,9 +1,9 @@
 package com.azulejo;
 
-import com.azulejo.compilacao.Aapt2;
-import com.azulejo.compilacao.Processo;
-import com.azulejo.projeto.Projeto;
-import com.azulejo.projeto.Chave;
+import com.apkc.compilacao.Aapt2;
+import com.apkc.compilacao.Processo;
+import com.apkc.projeto.Projeto;
+import com.apkc.projeto.Chave;
 import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;

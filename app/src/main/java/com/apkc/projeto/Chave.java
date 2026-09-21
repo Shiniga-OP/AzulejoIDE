@@ -1,7 +1,7 @@
-package com.azulejo.projeto;
+package com.apkc.projeto;
 
-import com.azulejo.util.GeradorChave;
-import com.azulejo.util.ArquivosUtil;
+import com.apkc.util.GeradorChave;
+import com.apkc.util.ArquivosUtil;
 
 public class Chave {
 	public String senha;

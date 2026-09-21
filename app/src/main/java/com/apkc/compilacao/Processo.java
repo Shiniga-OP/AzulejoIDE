@@ -1,6 +1,6 @@
-package com.azulejo.compilacao;
+package com.apkc.compilacao;
 
-import com.azulejo.projeto.Projeto;
+import com.apkc.projeto.Projeto;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.io.File;
@@ -13,9 +13,10 @@ import java.util.zip.ZipEntry;
 import java.io.InputStream;
 import java.util.Enumeration;
 import java.io.FileInputStream;
-import com.azulejo.util.Assinador;
+import com.apkc.util.Assinador;
 import com.dfoda.dexer.DFodaCtx;
 import com.dfoda.dexer.Main;
+import com.apkc.otimizadores.OCJ;
 
 public class Processo {
 	public Projeto prj;
@@ -79,7 +80,14 @@ public class Processo {
 							return;
 						}
 						System.out.println("Java compilado\n");
-
+						
+						final boolean sucesso2 = OCJ.rodar(pastaClasses);
+						
+						if(!sucesso2) {
+							System.out.println("ERRO na otimização\n");
+							return;
+						}
+						System.out.println("Classes otimizadas\n");
 						final DFodaCtx ctx = new DFodaCtx();
 						final Main.Args dexArgs = new Main.Args(ctx);
 						dexArgs.analisar(new String[]{"--saida=" + saidaDex, pastaClasses});
@@ -104,6 +112,7 @@ public class Processo {
 					}
 				}
 			});
+			executor.shutdown();
 			return false;
 	}
 	

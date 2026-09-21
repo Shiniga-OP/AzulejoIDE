@@ -1,4 +1,5 @@
-package com.azulejo.util;
+package com.apkc.util;
+
 import java.io.File;
 
 public class ArquivosUtil {

@@ -1,4 +1,4 @@
-package com.azulejo.util;
+package com.apkc.util;
 
 import java.security.MessageDigest;
 import java.io.ByteArrayOutputStream;
