@@ -6,7 +6,6 @@ import android.app.Activity;
 import android.widget.ScrollView;
 import android.widget.EditText;
 import android.view.View;
-import com.azulejo.R;
 
 public class Logs extends PrintStream {
 	public static Activity ctx;
@@ -16,14 +15,6 @@ public class Logs extends PrintStream {
 	public Logs(final Activity ctx) {
 		super(new ByteArrayOutputStream());
 		this.ctx = ctx;
-		
-		ctx.runOnUiThread(new Runnable() {
-			@Override
-			public void run() {
-				texto = ctx.findViewById(R.id.logs);
-				div = ctx.findViewById(R.id.div);
-			}
-		});
 	}
 
 	@Override
