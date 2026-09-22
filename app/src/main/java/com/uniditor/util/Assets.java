@@ -1,4 +1,4 @@
-package com.uniditor.nucleo.util;
+package com.uniditor.util;
 
 import java.io.InputStream;
 import java.io.File;

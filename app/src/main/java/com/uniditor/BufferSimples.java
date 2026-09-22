@@ -1,4 +1,4 @@
-package com.uniditor.nucleo;
+package com.uniditor;
 
 import java.util.ArrayList;
 
@@ -96,4 +96,3 @@ public class BufferSimples implements Buffer {
 		if(linhas.isEmpty()) linhas.add("");
 	}
 }
-

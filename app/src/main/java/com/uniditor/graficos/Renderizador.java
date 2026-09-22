@@ -1,6 +1,6 @@
-package com.uniditor.nucleo.graficos;
+package com.uniditor.graficos;
 
-import com.uniditor.nucleo.sintaxe.Token;
+import com.uniditor.sintaxe.Token;
 import java.io.File;
 
 public interface Renderizador {

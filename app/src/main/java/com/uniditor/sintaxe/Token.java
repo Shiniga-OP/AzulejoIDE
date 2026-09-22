@@ -1,6 +1,6 @@
-package com.uniditor.nucleo.sintaxe;
+package com.uniditor.sintaxe;
 
-import com.uniditor.nucleo.graficos.Cor;
+import com.uniditor.graficos.Cor;
 
 public class Token {
     public final String descricao; // futuro: exibido no autocomplete
@@ -24,4 +24,3 @@ public class Token {
         this(inicio, fim, cor, null, false, false);
     }
 }
-

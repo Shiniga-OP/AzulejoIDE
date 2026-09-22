@@ -1,8 +1,8 @@
-package com.uniditor.nucleo.sintaxe;
+package com.uniditor.sintaxe;
 
-import com.uniditor.nucleo.graficos.Cor;
-import com.uniditor.nucleo.sintaxe.Token;
-import com.uniditor.nucleo.sintaxe.Tokenizador;
+import com.uniditor.graficos.Cor;
+import com.uniditor.sintaxe.Token;
+import com.uniditor.sintaxe.Tokenizador;
 import java.util.ArrayList;
 import java.util.List;
 

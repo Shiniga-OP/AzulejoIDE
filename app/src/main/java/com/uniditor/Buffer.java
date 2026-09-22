@@ -1,4 +1,4 @@
-package com.uniditor.nucleo;
+package com.uniditor;
 
 public interface Buffer {
     void add(int linha, int coluna, String texto);

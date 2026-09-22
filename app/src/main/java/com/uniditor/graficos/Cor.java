@@ -1,4 +1,4 @@
-package com.uniditor.nucleo.graficos;
+package com.uniditor.graficos;
 
 public interface Cor {
 	public static final int

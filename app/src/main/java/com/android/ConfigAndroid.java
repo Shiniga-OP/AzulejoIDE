@@ -1,8 +1,8 @@
 package com.android;
 
 import android.content.Context;
-import com.uniditor.nucleo.Util;
-import com.uniditor.nucleo.util.Assets;
+import com.uniditor.Util;
+import com.uniditor.util.Assets;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.File;

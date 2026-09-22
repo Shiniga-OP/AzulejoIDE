@@ -5,6 +5,9 @@ import com.apkc.compilacao.Processo;
 import com.apkc.projeto.Projeto;
 import com.apkc.projeto.Chave;
 import com.apkc.util.ArquivosUtil;
+import com.auto.ArquivoAuto;
+import com.auto.No;
+import java.util.Map;
 import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
@@ -21,27 +24,30 @@ import com.android.graficos.Canvas;
 import com.android.EditorAndroidCanvas;
 import com.azulejo.debug.Logs;
 import com.azulejo.gerenciador.GerenciadorArquivos;
-import com.uniditor.nucleo.editores.VisaoEditor;
-import com.uniditor.nucleo.sintaxe.TokenizadorJava;
-import com.uniditor.nucleo.Util;
-
+import com.uniditor.editores.VisaoEditor;
+import com.uniditor.sintaxe.TokenizadorJava;
+import com.uniditor.Util;
 import java.io.File;
 
 public class InicioActivity extends Activity {
 	public Logs logs;
-	public String raiz = "";
+	public String raiz;
 	public VisaoEditor visaoEditor;
 	public GerenciadorArquivos gerenciador;
 	public FrameLayout tela;
 	public View editor;
 	public File arquivoAberto;
-
+	public File pastaRaiz;
+	public String androidJar;
+	
     @Override
     protected void onCreate(Bundle s) {
         super.onCreate(s);
 		new ConfigAndroid(this);
 
 		raiz = getExternalMediaDirs()[0].getAbsolutePath();
+		pastaRaiz = new File(raiz, "projeto");
+		androidJar = raiz + "/android.jar";
 
 		visaoEditor = new VisaoEditor(
 			new Canvas(
@@ -50,7 +56,6 @@ public class InicioActivity extends Activity {
 			), // renderizador
 			new TokenizadorJava() // regras de sintaxe
 		);
-
 		visaoEditor.render.defFonte(
 			Util.arquivo.copiarAssets("firacode-regular.ttf")
 		);
@@ -64,16 +69,15 @@ public class InicioActivity extends Activity {
 					abrir(arquivo);
 				}
 			});
-
 		Button compilar = new Button(this);
 		compilar.setText("Compilar");
 		compilar.setOnClickListener(new View.OnClickListener() {
 				@Override
 				public void onClick(View v) {
-					iniciar(v);
+					logs.texto.setText("");
+					compilarProjeto(pastaRaiz);
 				}
 			});
-
 		EditText texto = new EditText(this);
 		texto.setBackgroundColor(Color.WHITE);
 		texto.setTextColor(Color.BLACK);
@@ -126,25 +130,6 @@ public class InicioActivity extends Activity {
 		System.setErr(logs);
     }
 
-    public void iniciar(View v) {
-		Aapt2 aapt2 = new Aapt2(getApplicationInfo().nativeLibraryDir + "/libaapt2.so");
-		final String projeto = raiz + "/projeto/";
-		final String java = projeto + "src/com/teste/Inicio.java";
-		final String res = projeto + "res";
-		final String manifest = projeto + "AndroidManifest.xml";
-		final String androidJar = raiz + "/android.jar";
-
-		logs.texto.setText("");
-
-		// pega uma chave que ja existe ou cria uma se não existir
-		Chave chave = new Chave(projeto + "teste.p12", "teste", "Teste", "123456");
-
-		Processo processo = new Processo(
-			new Projeto(projeto, java, res, manifest, chave)
-		);
-		processo.compilarAPK(androidJar, aapt2);
-	}
-
 	public Button aba(String titulo, final View alvo) {
 		Button botao = new Button(this);
 		botao.setText(titulo);
@@ -156,11 +141,43 @@ public class InicioActivity extends Activity {
 			});
 		return botao;
 	}
+	
+	public void compilarProjeto(File caminho) {
+		ArquivoAuto auto = ArquivoAuto.carregar(caminho);
 
-	// deixa só uma das três views visíveis
+		// roda um Processo por modulo declarado em projeto.auto
+		for(Map.Entry<String, No> entrada : auto.modulos.entrySet()) {
+			String caminhoRelativo = entrada.getKey();
+			No config = entrada.getValue();
+			No android = config.pos("android");
+
+			File pastaModulo = new File(caminho, caminhoRelativo);
+			final String modulo = pastaModulo.getAbsolutePath() + "/";
+			final String java = modulo + config.posTexto("java");
+			final String res = modulo + android.posTexto("res");
+			final String manifest = modulo + android.posTexto("androidManifest");
+
+			No assinar = android.pos("assinar");
+
+			// pega uma chave que ja existe ou cria uma se não existir
+			Chave chave = new Chave(
+				modulo + assinar.posTexto("chave"),
+				assinar.posTexto("nome"),
+				assinar.posTexto("dono"),
+				assinar.posTexto("senha")
+			);
+			Aapt2 aapt2 = new Aapt2(getApplicationInfo().nativeLibraryDir + "/libaapt2.so");
+			Processo processo = new Processo(
+				new Projeto(modulo, java, res, manifest, chave)
+			);
+			processo.compilarAPK(androidJar, aapt2);
+		}
+	}
+
+	// deixa so uma das tres views visiveis
 	public void mostrar(View alvo) {
 		for(int i = 0; i < tela.getChildCount(); i++) {
-			View filho = tela.getChildAt(i);
+			final View filho = tela.getChildAt(i);
 			filho.setVisibility(filho == alvo ? View.VISIBLE : View.GONE);
 		}
 	}
@@ -175,7 +192,7 @@ public class InicioActivity extends Activity {
 	}
 
 	public void abrir(File arquivo) {
-		String texto = ArquivosUtil.ler(arquivo);
+		final String texto = ArquivosUtil.ler(arquivo);
 
 		if(texto == null) return;
 
@@ -186,9 +203,9 @@ public class InicioActivity extends Activity {
 	}
 
 	// monta o texto linha a linha (só uso os métodos do buffer que já vi sendo usados)
-	public String textoDoEditor() {
-		StringBuilder sb = new StringBuilder();
-		int total = visaoEditor.buffer.totalLinhas();
+	public String textoEditor() {
+		final StringBuilder sb = new StringBuilder();
+		final int total = visaoEditor.buffer.totalLinhas();
 
 		for(int i = 0; i < total; i++) {
 			if(i > 0) sb.append("\n");
@@ -202,8 +219,7 @@ public class InicioActivity extends Activity {
 			Toast.makeText(this, "Nenhum arquivo aberto", Toast.LENGTH_SHORT).show();
 			return;
 		}
-
-		boolean ok = ArquivosUtil.salvar(arquivoAberto, textoDoEditor());
+		final boolean ok = ArquivosUtil.salvar(arquivoAberto, textoEditor());
 		Toast.makeText(this, ok ? "Salvo: " + arquivoAberto.getName() : "Falha ao salvar", Toast.LENGTH_SHORT).show();
 	}
 }

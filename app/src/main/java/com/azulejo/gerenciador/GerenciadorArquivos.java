@@ -44,7 +44,6 @@ public class GerenciadorArquivos extends LinearLayout {
 					subir();
 				}
 			});
-
 		lista = new ListView(contexto);
 		lista.setDivider(null);
 		lista.setDividerHeight(0);
@@ -62,7 +61,6 @@ public class GerenciadorArquivos extends LinearLayout {
 					}
 				}
 			});
-
 		addView(caminho, new LayoutParams(-1, adapter.dp(40)));
 		addView(lista, new LayoutParams(-1, 0, 1f));
 	}
@@ -85,24 +83,20 @@ public class GerenciadorArquivos extends LinearLayout {
 
 	// sobe um nível, retorna false se já estiver na raiz (o chamador decide o que fazer)
 	public boolean subir() {
-		if(atual == null || atual.equals(raiz)) {
-			return false;
-		}
+		if(atual == null || atual.equals(raiz)) return false;
+		
+		final File pai = atual.getParentFile();
 
-		File pai = atual.getParentFile();
-
-		if(pai == null) {
-			return false;
-		}
-
+		if(pai == null) return false;
+		
 		abrirPasta(pai);
 		return true;
 	}
 
 	// mostra "projeto/src/com" em vez do caminho absoluto inteiro
 	public String nomeRelativo(File pasta) {
-		String base = raiz.getParent();
-		String completo = pasta.getAbsolutePath();
+		final String base = raiz.getParent();
+		final String completo = pasta.getAbsolutePath();
 
 		if(base != null && completo.startsWith(base)) {
 			return completo.substring(base.length() + 1);

@@ -1,6 +1,6 @@
-package com.uniditor.nucleo.entradas;
+package com.uniditor.entradas;
 
-import com.uniditor.nucleo.Buffer;
+import com.uniditor.Buffer;
 
 public interface EntradaTexto {
     Teclado teclado;
@@ -19,4 +19,3 @@ public interface EntradaTexto {
     String copiar();
     void rmSelecao(); // recortar/deletar seleção
 }
-

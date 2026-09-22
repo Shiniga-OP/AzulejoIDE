@@ -3,9 +3,9 @@ package com.android.graficos;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 
-import com.uniditor.nucleo.graficos.Renderizador;
+import com.uniditor.graficos.Renderizador;
 
-import com.uniditor.nucleo.sintaxe.Token;
+import com.uniditor.sintaxe.Token;
 import java.io.File;
 
 public class Canvas implements Renderizador {

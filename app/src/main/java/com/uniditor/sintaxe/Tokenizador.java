@@ -1,6 +1,6 @@
-package com.uniditor.nucleo.sintaxe;
+package com.uniditor.sintaxe;
 
-import com.uniditor.nucleo.graficos.Cor;
+import com.uniditor.graficos.Cor;
 
 public interface Tokenizador {
     /*

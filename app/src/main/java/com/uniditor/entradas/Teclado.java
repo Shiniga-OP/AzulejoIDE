@@ -1,4 +1,4 @@
-package com.uniditor.nucleo.entradas;
+package com.uniditor.entradas;
 
 public interface Teclado {
 	void abrirTeclado();

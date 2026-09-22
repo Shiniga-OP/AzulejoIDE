@@ -1,18 +1,18 @@
-package com.uniditor.nucleo.editores;
+package com.uniditor.editores;
 
-import com.uniditor.nucleo.entradas.CursorSimples;
-import com.uniditor.nucleo.entradas.EntradaTextoSimples;
-import com.uniditor.nucleo.entradas.Selecao;
-import com.uniditor.nucleo.Buffer;
-import com.uniditor.nucleo.BufferSimples;
-import com.uniditor.nucleo.graficos.Cor;
-import com.uniditor.nucleo.graficos.Renderizador;
-import com.uniditor.nucleo.Editor;
-import com.uniditor.nucleo.entradas.EntradaTexto;
+import com.uniditor.entradas.CursorSimples;
+import com.uniditor.entradas.EntradaTextoSimples;
+import com.uniditor.entradas.Selecao;
+import com.uniditor.Buffer;
+import com.uniditor.BufferSimples;
+import com.uniditor.graficos.Cor;
+import com.uniditor.graficos.Renderizador;
+import com.uniditor.Editor;
+import com.uniditor.entradas.EntradaTexto;
 import java.util.Timer;
 import java.util.TimerTask;
-import com.uniditor.nucleo.sintaxe.Tokenizador;
-import com.uniditor.nucleo.sintaxe.Token;
+import com.uniditor.sintaxe.Tokenizador;
+import com.uniditor.sintaxe.Token;
 
 public class VisaoEditor extends Editor {
     public float ESPACO_ESQ = 12f;
@@ -73,7 +73,7 @@ public class VisaoEditor extends Editor {
         int linha = (int)(yRelativo / altLinha);
         linha = Math.max(0, Math.min(linha, buffer.totalLinhas() - 1));
 
-        float xRelativo = tX - sarjetaLarg - ESPACO_ESQ;
+        float xRelativo = tX - sarjetaLarg - ESPACO_ESQ + rolamentoX;
         String conteudo = buffer.linha(linha);
         int coluna = 0;
         float acumulado = 0f;
@@ -91,6 +91,7 @@ public class VisaoEditor extends Editor {
         cursor.def(pos[0], pos[1]);
     }
 
+    @Override
     public float larguraSarjeta() {
         int digitos = String.valueOf(buffer.totalLinhas()).length();
         return render.larguraTexto("0") * (digitos + 1) + ESPACO_ESQ;
@@ -107,11 +108,11 @@ public class VisaoEditor extends Editor {
         float baseline = render.ascente();
 
         render.addRecorte(sarjetaLarg, 0, render.largura - sarjetaLarg, render.altura);
-        render.defPos(0, -rolamentoY);
+        render.defPos(-rolamentoX, -rolamentoY);
 
         int primeiraLinha = Math.max(0, (int)(rolamentoY / altLinha));
         int ultimaLinha = Math.min(buffer.totalLinhas() - 1,
-        (int)((rolamentoY + render.altura) / altLinha) + 1);
+								   (int)((rolamentoY + render.altura) / altLinha) + 1);
 
         // === destaque de seleção ===
         Selecao sel = entrada.selecao();
@@ -174,11 +175,21 @@ public class VisaoEditor extends Editor {
         buffer.defTexto(texto);
         cursor.def(0, 0);
         rolamentoY = 0f;
+        rolamentoX = 0f;
     }
-	
+
+    @Override
+    public float larguraMaxLinha() {
+        float max = 0f;
+        for(int i = 0; i < buffer.totalLinhas(); i++) {
+            float larg = render.larguraTexto(buffer.linha(i));
+            if(larg > max) max = larg;
+        }
+        return max + ESPACO_ESQ;
+    }
+
 	@Override
 	public void liberar() {
 		render.liberar();
 	}
 }
-

@@ -1,6 +1,6 @@
-package com.uniditor.nucleo.entradas;
+package com.uniditor.entradas;
 
-import com.uniditor.nucleo.Buffer;
+import com.uniditor.Buffer;
 
 public class EntradaTextoSimples implements EntradaTexto {
     public final Buffer buffer;

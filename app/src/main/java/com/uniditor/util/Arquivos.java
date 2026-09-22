@@ -1,4 +1,4 @@
-package com.uniditor.nucleo.util;
+package com.uniditor.util;
 
 import java.io.InputStream;
 import java.io.File;
@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
-import com.uniditor.nucleo.Util;
+import com.uniditor.Util;
 
 public class Arquivos {
 	public static File copiarAssets(String caminho) {
