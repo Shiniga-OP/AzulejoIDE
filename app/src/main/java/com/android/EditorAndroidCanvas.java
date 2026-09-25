@@ -20,18 +20,36 @@ import android.os.Handler;
 
 import com.uniditor.Editor;
 import com.uniditor.entradas.Teclado;
+import com.uniditor.Util;
+import java.io.InputStream;
+import java.io.IOException;
+import java.io.File;
+import com.uniditor.util.Assets;
 
 public class EditorAndroidCanvas extends View {
     public Editor editor;
     public View ISSO;
 
-    public static final float LIMIAR_DRAG = 8f;
+    public static final float LIMIAR_AGARRA = 8f;
 
     public float toqueInicioX, toqueInicioY;
     public boolean arrastando = false;
     public boolean pressionado = false;
 
     public ActionMode modoAcao = null;
+
+    // composicao do teclado: trecho [composInicio, composFim) na linha composLinha;
+    // -1 = sem composicao em andamento
+    public int composLinha = -1;
+    public int composInicio = -1;
+    public int composFim = -1;
+    public int loteEdicao = 0;
+
+    // ultimo estado avisado ao teclado, pra so chamar updateSelection quando mudar
+    public int ultAvisoSelIni = -1;
+    public int ultAvisoSelFim = -1;
+    public int ultAvisoComIni = -1;
+    public int ultAvisoComFim = -1;
 
     public static final int ID_COPIAR = 1;
     public static final int ID_RECORTAR = 2;
@@ -108,7 +126,7 @@ public class EditorAndroidCanvas extends View {
         }
     };
 
-    public EditorAndroidCanvas(Context ctx, final Editor editor) {
+    public EditorAndroidCanvas(final Context ctx, final Editor editor) {
         super(ctx);
         this.editor = editor;
 
@@ -117,7 +135,7 @@ public class EditorAndroidCanvas extends View {
             @Override
             public void abrirTeclado() {
                 final InputMethodManager imm = (InputMethodManager)getContext()
-				.getSystemService(Context.INPUT_METHOD_SERVICE);
+					.getSystemService(Context.INPUT_METHOD_SERVICE);
                 if(imm != null) imm.showSoftInput(ISSO, InputMethodManager.SHOW_IMPLICIT);
             }
         };
@@ -133,6 +151,21 @@ public class EditorAndroidCanvas extends View {
 			});
         setFocusable(true);
         setFocusableInTouchMode(true);
+		
+		Util.assets = new Assets() {
+			@Override
+			public InputStream obter(String caminho) {
+				try {
+					return getContext().getAssets().open(caminho);
+				} catch(IOException e) {
+					return null;
+				}
+			}
+			@Override
+			public File obterCache() {
+				return getContext().getCacheDir();
+			}
+		};
     }
 
     public void selecionarPalavra(int linha, int coluna) {
@@ -241,7 +274,37 @@ public class EditorAndroidCanvas extends View {
         editor.render.defAPI(canvas);
         editor.render.ajustar(getWidth(), getHeight());
         editor.att();
+        avisarTeclado();
         agendarRedesenho();
+    }
+
+    // o teclado guarda a propria copia da pos do cursor e da composicao; se o editor
+    // muda o texto por conta propria(par automatico, indentacao, toque) e nao avisa,
+    // essa copia fica errada e o teclado manda posicoes absolutas erradas
+    public void avisarTeclado() {
+        if(loteEdicao > 0) return;
+        final int selIni = inicioSelecaoAbs();
+        final int selFim = fimSelecaoAbs();
+        int comIni = -1;
+        int comFim = -1;
+        if(composInicio >= 0) {
+            comIni = posAbsoluta(composLinha, composInicio);
+            comFim = posAbsoluta(composLinha, composFim);
+        }
+        if(selIni == ultAvisoSelIni && selFim == ultAvisoSelFim
+		   && comIni == ultAvisoComIni && comFim == ultAvisoComFim) return;
+        ultAvisoSelIni = selIni;
+        ultAvisoSelFim = selFim;
+        ultAvisoComIni = comIni;
+        ultAvisoComFim = comFim;
+        final InputMethodManager imm = (InputMethodManager)getContext()
+            .getSystemService(Context.INPUT_METHOD_SERVICE);
+        if(imm != null) imm.updateSelection(this, selIni, selFim, comIni, comFim);
+    }
+
+    @Override
+    public boolean onCheckIsTextEditor() {
+        return true;
     }
 
     public void agendarRedesenho() {
@@ -289,7 +352,7 @@ public class EditorAndroidCanvas extends View {
 				}
 				final float dyAbs = Math.abs(e.getY() - toqueInicioY);
 				final float dxAbs = Math.abs(e.getX() - toqueInicioX);
-				if(!arrastando && (dxAbs > LIMIAR_DRAG || dyAbs > LIMIAR_DRAG)) {
+				if(!arrastando && (dxAbs > LIMIAR_AGARRA || dyAbs > LIMIAR_AGARRA)) {
 					arrastando = true;
 				}
 				if(arrastando) {
@@ -401,11 +464,16 @@ public class EditorAndroidCanvas extends View {
             | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
         info.imeOptions = EditorInfo.IME_FLAG_NO_ENTER_ACTION;
 
-        return new BaseInputConnection(this, false) {
-            // pos absoluta na linha atual; -1 = sem composicao em andamento
-            public int composInicio = -1;
-            public int composFim = -1;
+        composLinha = -1;
+        composInicio = -1;
+        composFim = -1;
+        loteEdicao = 0;
+        ultAvisoSelIni = -1;
+        ultAvisoSelFim = -1;
+        ultAvisoComIni = -1;
+        ultAvisoComFim = -1;
 
+        return new BaseInputConnection(this, false) {
             // guarda a ultima pos de composicao mesmo apos finishComposingText,
             // pra commitText poder substituir o trecho se o teclado mandar o
             // texto final da sugestao sem reabrir a composicao antes
@@ -446,13 +514,13 @@ public class EditorAndroidCanvas extends View {
                 final int linha = editor.cursor.linha();
                 if(composInicio >= 0) {
                     // finaliza a composicao: troca o trecho sugerido pelo texto final
-                    final int colIni = rmIntervalo(linha, composInicio, composFim);
-                    editor.cursor.def(linha, colIni);
+                    final int colIni = rmIntervalo(composLinha, composInicio, composFim);
+                    editor.cursor.def(composLinha, colIni);
                     limparComposicao();
                     editor.entrada.add(t);
                 } else if(linhaUltComposicao == linha &&
-				ultComposInicio >= 0&&
-				ultComposFim == editor.cursor.coluna()) {
+						  ultComposInicio >= 0&&
+						  ultComposFim == editor.cursor.coluna()) {
                     // o teclado finalizou a composicao(ex: finishComposingText) e ja
                     // manda o texto definitivo da sugestao sem reabrir setComposingText;
                     // ainda assim precisa substituir o trecho antigo, senao ele fica
@@ -469,10 +537,12 @@ public class EditorAndroidCanvas extends View {
                     editor.entrada.aoDigitar(t);
                 }
                 invalidate();
+                avisarTeclado();
                 return true;
             }
 
             public void limparComposicao() {
+                composLinha = -1;
                 composInicio = -1;
                 composFim = -1;
                 linhaUltComposicao = -1;
@@ -485,18 +555,21 @@ public class EditorAndroidCanvas extends View {
                 // substitui o trecho em composicao pelo texto sugerido, sem
                 // deixar o par automatico de aspas/chaves reagir a cada letra
                 final String t = texto.toString();
-                final int linha = editor.cursor.linha();
+                int linha = editor.cursor.linha();
                 int colIni;
                 if(composInicio >= 0) {
+                    linha = composLinha;
                     colIni = rmIntervalo(linha, composInicio, composFim);
                 } else {
                     colIni = editor.cursor.coluna();
                 }
                 editor.buffer.add(linha, colIni, t);
+                composLinha = linha;
                 composInicio = colIni;
                 composFim = colIni + t.length();
                 editor.cursor.def(linha, composFim);
                 invalidate();
+                avisarTeclado();
                 return true;
             }
 
@@ -505,31 +578,65 @@ public class EditorAndroidCanvas extends View {
                 // guarda onde a composicao terminou, pra um commitText logo em
                 // seguida ainda saber o que substituir (ver comentario em commitText)
                 if(composInicio >= 0) {
-                    linhaUltComposicao = editor.cursor.linha();
+                    linhaUltComposicao = composLinha;
                     ultComposInicio = composInicio;
                     ultComposFim = composFim;
                 }
+                composLinha = -1;
                 composInicio = -1;
                 composFim = -1;
+                avisarTeclado();
                 return true;
+            }
+
+            // o teclado reabre uma palavra(ex: ao tocar numa sugestao) dizendo qual
+            // trecho absoluto e a composicao; sem sobrescrever, o BaseInputConnection
+            // mexe num Editable interno vazio e o buffer real nunca fica sabendo
+            @Override
+            public boolean setComposingRegion(int ini, int fim) {
+                final int[] a = linhaColunaDe(Math.min(ini, fim));
+                final int[] b = linhaColunaDe(Math.max(ini, fim));
+                limparComposicao();
+                if(a[0] == b[0] && a[1] != b[1]) {
+                    composLinha = a[0];
+                    composInicio = a[1];
+                    composFim = b[1];
+                }
+                avisarTeclado();
+                return true;
+            }
+
+            @Override
+            public boolean beginBatchEdit() {
+                loteEdicao++;
+                return true;
+            }
+
+            @Override
+            public boolean endBatchEdit() {
+                if(loteEdicao > 0) loteEdicao--;
+                if(loteEdicao == 0) avisarTeclado();
+                return loteEdicao > 0;
             }
 
             @Override
             public boolean deleteSurroundingText(int antes, int depois) {
                 if(composInicio >= 0) {
                     // durante composicao, antes/depois contam a partir das bordas dela
-                    final int linha = editor.cursor.linha();
+                    final int linha = composLinha;
                     final int colIni = Math.max(0, composInicio - antes);
                     final int colFim = composFim + depois;
                     rmIntervalo(linha, colIni, colFim);
                     editor.cursor.def(linha, colIni);
                     limparComposicao();
                     invalidate();
+                    avisarTeclado();
                     return true;
                 }
                 limparComposicao();
                 for(int i = 0; i < antes;  i++) editor.entrada.rmAntes();
                 for(int i = 0; i < depois; i++) editor.entrada.rmDepois();
+                avisarTeclado();
                 return true;
             }
 
@@ -583,6 +690,7 @@ public class EditorAndroidCanvas extends View {
                     editor.cursor.def(b[0], b[1]);
                 }
                 invalidate();
+                avisarTeclado();
                 return true;
             }
 

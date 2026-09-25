@@ -11,9 +11,9 @@ import java.util.Map;
  * ponto de entrada: le o projeto.auto na raiz e, a partir dele,
  * o modulo.auto de cada modulo declarado.
  *
- * modulos fica indexado por caminho relativo (ex: "app/"), sem
+ * modulos fica indexado por caminho relativo, sem
  * classe propria pra isso: quem usa pega o No e navega com pos()/posTexto().
-*/
+ */
 public class ArquivoAuto {
 	public File raiz;
 	public No projeto;
@@ -37,6 +37,17 @@ public class ArquivoAuto {
 			}
 		}
 		return a;
+	}
+
+	// le so o modulo.auto de uma pasta, sem passar por projeto.auto (uso da IDE: abrir um modulo direto)
+	public static No carregarModulo(File pastaModulo) {
+		final File arquivoModulo = new File(pastaModulo, "modulo.auto");
+		return AnalisadorAuto.analisar(lerArquivo(arquivoModulo));
+	}
+
+	// existe modulo.auto nessa pasta?
+	public static boolean temModulo(File pasta) {
+		return new File(pasta, "modulo.auto").isFile();
 	}
 
 	private static String lerArquivo(File arquivo) {

@@ -25,7 +25,7 @@ public class Processo {
 		this.prj = prj;
 	}
 	
-	public boolean compilarAPK(final String androidJar,final Aapt2 aapt2) {
+	public boolean compilarAPK(final String androidJar, final String lambdasJar,final Aapt2 aapt2) {
 		final String projeto = prj.raiz;
 		final String src = prj.java;
 		final String pastaClasses = prj.raiz + "tmp/classes/";
@@ -64,10 +64,16 @@ public class Processo {
 						}
 						System.out.println("aapt2 link ok\n");
 
-						final String[] ecjArgs = {
-							"-source", "1.7", "-target", "1.7",
-							"-proc:none", "-d", pastaClasses,
-							"-bootclasspath", androidJar, src
+						// junta o android.jar e o lambdasJar em uma unica string separada por ':'
+						String bootClasspath = androidJar + (lambdasJar != null && !lambdasJar.isEmpty() ? ":" + lambdasJar : "");
+
+						String[] ecjArgs = {
+							"-source", prj.versaoJava, 
+							"-target", prj.versaoAlvo,
+							"-proc:none", 
+							"-d", pastaClasses,
+							"-bootclasspath", bootClasspath, // agora é uma unica string correta
+							src
 						};
 						final boolean sucesso = new org.eclipse.jdt.internal.compiler.batch.Main(
 							new PrintWriter(System.out),

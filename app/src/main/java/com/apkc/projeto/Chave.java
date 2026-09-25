@@ -1,7 +1,7 @@
 package com.apkc.projeto;
 
 import com.apkc.util.GeradorChave;
-import com.apkc.util.ArquivosUtil;
+import java.io.File;
 
 public class Chave {
 	public String senha;
@@ -15,7 +15,7 @@ public class Chave {
 		this.caminho = caminho;
 		this.senha = senha;
 		try {
-			if(!ArquivosUtil.existe(caminho)) GeradorChave.gerar(caminho, nomeChave, senha, nomeDono);
+			if(!(new File(caminho)).exists()) GeradorChave.gerar(caminho, nomeChave, senha, nomeDono);
 		} catch(Exception e){
 			System.out.println("[ERRO]: ao criar chave: "+e.getMessage());
 		}

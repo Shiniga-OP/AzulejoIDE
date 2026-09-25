@@ -4,10 +4,9 @@ import com.apkc.compilacao.Aapt2;
 import com.apkc.compilacao.Processo;
 import com.apkc.projeto.Projeto;
 import com.apkc.projeto.Chave;
-import com.apkc.util.ArquivosUtil;
+import com.azulejo.util.ArquivosUtil;
 import com.auto.ArquivoAuto;
 import com.auto.No;
-import java.util.Map;
 import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
@@ -19,7 +18,6 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 import android.widget.ScrollView;
-import com.android.ConfigAndroid;
 import com.android.graficos.Canvas;
 import com.android.EditorAndroidCanvas;
 import com.azulejo.debug.Logs;
@@ -31,23 +29,24 @@ import java.io.File;
 
 public class InicioActivity extends Activity {
 	public Logs logs;
-	public String raiz;
+	public static String raiz;
 	public VisaoEditor visaoEditor;
 	public GerenciadorArquivos gerenciador;
 	public FrameLayout tela;
 	public View editor;
 	public File arquivoAberto;
-	public File pastaRaiz;
 	public String androidJar;
-	
+	public String lambdasJar;
+	public static File moduloAtual; // pasta com o modulo.auto aberto no momento(null = nenhum ainda)
+	public Button abrirProjeto;
+
     @Override
     protected void onCreate(Bundle s) {
         super.onCreate(s);
-		new ConfigAndroid(this);
 
 		raiz = getExternalMediaDirs()[0].getAbsolutePath();
-		pastaRaiz = new File(raiz, "projeto");
 		androidJar = raiz + "/android.jar";
+		lambdasJar = null; // raiz + "/core-lambda-stubs.jar";
 
 		visaoEditor = new VisaoEditor(
 			new Canvas(
@@ -56,17 +55,47 @@ public class InicioActivity extends Activity {
 			), // renderizador
 			new TokenizadorJava() // regras de sintaxe
 		);
+		editor = new EditorAndroidCanvas(this, visaoEditor);
+
 		visaoEditor.render.defFonte(
 			Util.arquivo.copiarAssets("firacode-regular.ttf")
 		);
-		editor = new EditorAndroidCanvas(this, visaoEditor);
-
 		gerenciador = new GerenciadorArquivos(this);
-		gerenciador.defRaiz(new File(raiz, "projeto"));
+		gerenciador.defRaiz(new File(raiz));
+		ArquivosUtil.carregarPreferencias();
+		gerenciador.abrirPasta(gerenciador.atual);
+		
+		abrirProjeto = new Button(this);
+		abrirProjeto.setText("Abrir projeto");
+		abrirProjeto.setVisibility(View.GONE);
+		abrirProjeto.setOnClickListener(new View.OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					moduloAtual = gerenciador.atual;
+					abrirProjeto.setVisibility(View.GONE);
+					Toast.makeText(InicioActivity.this, "Projeto aberto: " + moduloAtual.getName(), Toast.LENGTH_SHORT).show();
+				}
+			});
+		gerenciador.addView(abrirProjeto, new LinearLayout.LayoutParams(-1, -2));
+
 		gerenciador.defOuvinte(new GerenciadorArquivos.Ouvinte() {
 				@Override
 				public void aoAbrir(File arquivo) {
 					abrir(arquivo);
+				}
+
+				@Override
+				public void aoExcluir(File arquivo) {
+					fechouExcluido(arquivo);
+				}
+
+				@Override
+				public void aoNavegar(File pasta) {
+					if(
+						ArquivoAuto.temModulo(pasta) &&
+						!moduloAtual.getAbsolutePath().equals(pasta.getAbsolutePath())
+					) abrirProjeto.setVisibility(View.VISIBLE);
+					else abrirProjeto.setVisibility(View.GONE);
 				}
 			});
 		Button compilar = new Button(this);
@@ -75,7 +104,7 @@ public class InicioActivity extends Activity {
 				@Override
 				public void onClick(View v) {
 					logs.texto.setText("");
-					compilarProjeto(pastaRaiz);
+					compilarModulo();
 				}
 			});
 		EditText texto = new EditText(this);
@@ -141,37 +170,38 @@ public class InicioActivity extends Activity {
 			});
 		return botao;
 	}
-	
-	public void compilarProjeto(File caminho) {
-		ArquivoAuto auto = ArquivoAuto.carregar(caminho);
 
-		// roda um Processo por modulo declarado em projeto.auto
-		for(Map.Entry<String, No> entrada : auto.modulos.entrySet()) {
-			String caminhoRelativo = entrada.getKey();
-			No config = entrada.getValue();
-			No android = config.pos("android");
-
-			File pastaModulo = new File(caminho, caminhoRelativo);
-			final String modulo = pastaModulo.getAbsolutePath() + "/";
-			final String java = modulo + config.posTexto("java");
-			final String res = modulo + android.posTexto("res");
-			final String manifest = modulo + android.posTexto("androidManifest");
-
-			No assinar = android.pos("assinar");
-
-			// pega uma chave que ja existe ou cria uma se não existir
-			Chave chave = new Chave(
-				modulo + assinar.posTexto("chave"),
-				assinar.posTexto("nome"),
-				assinar.posTexto("dono"),
-				assinar.posTexto("senha")
-			);
-			Aapt2 aapt2 = new Aapt2(getApplicationInfo().nativeLibraryDir + "/libaapt2.so");
-			Processo processo = new Processo(
-				new Projeto(modulo, java, res, manifest, chave)
-			);
-			processo.compilarAPK(androidJar, aapt2);
+	// compila so o modulo aberto pelo botao "Abrir projeto" (le direto o modulo.auto dele, sem projeto.auto)
+	public void compilarModulo() {
+		if(moduloAtual == null) {
+			Toast.makeText(this, "Nenhum projeto aberto: navegue até uma pasta com modulo.auto", Toast.LENGTH_SHORT).show();
+			return;
 		}
+		No config = ArquivoAuto.carregarModulo(moduloAtual);
+		No android = config.pos("android");
+
+		final String modulo = moduloAtual.getAbsolutePath() + "/";
+		final String java = modulo + config.posTexto("java");
+		final String res = modulo + android.posTexto("res");
+		final String manifest = modulo + android.posTexto("androidManifest");
+
+		No assinar = android.pos("assinar");
+
+		// pega uma chave que ja existe ou cria uma se não existir
+		Chave chave = new Chave(
+			modulo + assinar.posTexto("chave"),
+			assinar.posTexto("nome"),
+			assinar.posTexto("dono"),
+			assinar.posTexto("senha")
+		);
+
+		Projeto projeto = new Projeto(modulo, java, res, manifest, chave);
+		projeto.versaoJava = config.posTexto("versaoJava");
+		projeto.versaoAlvo = config.posTexto("versaoAlvo");
+
+		Aapt2 aapt2 = new Aapt2(getApplicationInfo().nativeLibraryDir + "/libaapt2.so");
+		Processo processo = new Processo(projeto);
+		processo.compilarAPK(androidJar, lambdasJar, aapt2);
 	}
 
 	// deixa so uma das tres views visiveis
@@ -202,7 +232,21 @@ public class InicioActivity extends Activity {
 		mostrar(editor);
 	}
 
-	// monta o texto linha a linha (só uso os métodos do buffer que já vi sendo usados)
+	// se o arquivo aberto foi excluido(ou está dentro da pasta excluida), solta ele pra o Salvar não recriar
+	public void fechouExcluido(File excluido) {
+		if(arquivoAberto == null) return;
+
+		final String aberto = arquivoAberto.getAbsolutePath();
+		final String alvo = excluido.getAbsolutePath();
+
+		if(aberto.equals(alvo) || aberto.startsWith(alvo + "/")) {
+			arquivoAberto = null;
+			visaoEditor.entrada.limparSelecao();
+			visaoEditor.defTexto("");
+		}
+	}
+
+	// monta o texto linha a linha(so uso os metodos do buffer que ja vi sendo usados)
 	public String textoEditor() {
 		final StringBuilder sb = new StringBuilder();
 		final int total = visaoEditor.buffer.totalLinhas();
@@ -221,5 +265,10 @@ public class InicioActivity extends Activity {
 		}
 		final boolean ok = ArquivosUtil.salvar(arquivoAberto, textoEditor());
 		Toast.makeText(this, ok ? "Salvo: " + arquivoAberto.getName() : "Falha ao salvar", Toast.LENGTH_SHORT).show();
+	}
+
+	@Override
+	protected void onPause() {
+		ArquivosUtil.salvarPreferencias();
 	}
 }
