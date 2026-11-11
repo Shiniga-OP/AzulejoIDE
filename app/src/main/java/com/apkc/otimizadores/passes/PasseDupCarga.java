@@ -24,6 +24,8 @@ public class PasseDupCarga implements Passe {
 				final AnalisadorClasse.Instrucao c = m.instrucoes.get(i + 2);
 				final AnalisadorClasse.Instrucao d = m.instrucoes.get(i + 3);
 
+				if(m.alvos[c.pos] || m.alvos[d.pos]) continue;
+
 				// aload_N (0x2A-0x2D) seguido de iload_M (0x1A-0x1D), repetido igual:
 				// dup2 reproduz o mesmo estado de pilha sem recarregar as duas variaveis.
 				if(a.codigo >= 0x2A && a.codigo <= 0x2D

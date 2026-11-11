@@ -4,6 +4,7 @@ import com.apkc.compilacao.Aapt2;
 import com.apkc.compilacao.Processo;
 import com.apkc.projeto.Projeto;
 import com.apkc.projeto.Chave;
+import com.apkc.projeto.Biblis;
 import com.azulejo.util.ArquivosUtil;
 import com.auto.ArquivoAuto;
 import com.auto.No;
@@ -26,6 +27,8 @@ import com.uniditor.editores.VisaoEditor;
 import com.uniditor.sintaxe.TokenizadorJava;
 import com.uniditor.Util;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class InicioActivity extends Activity {
 	public Logs logs;
@@ -44,7 +47,13 @@ public class InicioActivity extends Activity {
     protected void onCreate(Bundle s) {
         super.onCreate(s);
 
-		raiz = getExternalMediaDirs()[0].getAbsolutePath();
+		// getExternalMediaDirs() pode vir vazio ou com null em alguns aparelhos
+		File[] midias = getExternalMediaDirs();
+		if(midias != null && midias.length > 0 && midias[0] != null) {
+			raiz = midias[0].getAbsolutePath();
+		} else {
+			raiz = getFilesDir().getAbsolutePath();
+		}
 		androidJar = raiz + "/android.jar";
 		lambdasJar = null; // raiz + "/core-lambda-stubs.jar";
 
@@ -63,8 +72,8 @@ public class InicioActivity extends Activity {
 		gerenciador = new GerenciadorArquivos(this);
 		gerenciador.defRaiz(new File(raiz));
 		ArquivosUtil.carregarPreferencias();
-		gerenciador.abrirPasta(gerenciador.atual);
-		
+		if(gerenciador.atual != null) gerenciador.abrirPasta(gerenciador.atual);
+
 		abrirProjeto = new Button(this);
 		abrirProjeto.setText("Abrir projeto");
 		abrirProjeto.setVisibility(View.GONE);
@@ -91,10 +100,12 @@ public class InicioActivity extends Activity {
 
 				@Override
 				public void aoNavegar(File pasta) {
+					// moduloAtual é null até o usuário abrir um projeto
 					if(
+						pasta != null &&
 						ArquivoAuto.temModulo(pasta) &&
-						!moduloAtual.getAbsolutePath().equals(pasta.getAbsolutePath())
-					) abrirProjeto.setVisibility(View.VISIBLE);
+						(moduloAtual == null || !moduloAtual.getAbsolutePath().equals(pasta.getAbsolutePath()))
+						) abrirProjeto.setVisibility(View.VISIBLE);
 					else abrirProjeto.setVisibility(View.GONE);
 				}
 			});
@@ -181,7 +192,8 @@ public class InicioActivity extends Activity {
 		No android = config.pos("android");
 
 		final String modulo = moduloAtual.getAbsolutePath() + "/";
-		final String java = modulo + config.posTexto("java");
+		final List<String> fontes = new ArrayList<String>();
+		for(String f : textos(config.pos("java"))) fontes.add(modulo + f);
 		final String res = modulo + android.posTexto("res");
 		final String manifest = modulo + android.posTexto("androidManifest");
 
@@ -195,13 +207,38 @@ public class InicioActivity extends Activity {
 			assinar.posTexto("senha")
 		);
 
-		Projeto projeto = new Projeto(modulo, java, res, manifest, chave);
+		Projeto projeto = new Projeto(modulo, fontes, res, manifest, chave);
 		projeto.versaoJava = config.posTexto("versaoJava");
 		projeto.versaoAlvo = config.posTexto("versaoAlvo");
+		final String assets = android.posTexto("assets");
+		if(assets != null) projeto.assets = modulo + assets;
+		projeto.sdkMinimo = android.posTexto("sdkMinimo");
+		projeto.sdkAlvo = android.posTexto("sdkAlvo");
+		projeto.codigoVersao = android.posTexto("codigoVersao");
+		projeto.nomeVersao = android.posTexto("nomeVersao");
+
+		No biblis = config.pos("biblis");
+		if(biblis != null) {
+			for(String padrao : textos(biblis.pos("jars"))) projeto.jars.addAll(Biblis.jars(modulo + padrao));
+			final String jni = biblis.posTexto("jni");
+			if(jni != null) projeto.nativas = Biblis.nativas(modulo + jni);
+		}
 
 		Aapt2 aapt2 = new Aapt2(getApplicationInfo().nativeLibraryDir + "/libaapt2.so");
 		Processo processo = new Processo(projeto);
 		processo.compilarAPK(androidJar, lambdasJar, aapt2);
+	}
+
+	// aceita um texto ou uma lista de textos
+	public List<String> textos(No no) {
+		final List<String> r = new ArrayList<String>();
+		if(no == null) return r;
+		if(no.ehLista()) {
+			for(No item : no.lista) r.add(item.texto);
+		} else if(no.texto != null) {
+			r.add(no.texto);
+		}
+		return r;
 	}
 
 	// deixa so uma das tres views visiveis
@@ -269,6 +306,7 @@ public class InicioActivity extends Activity {
 
 	@Override
 	protected void onPause() {
+		super.onPause(); // obrigatório: sem isso o Android lança SuperNotCalledException
 		ArquivosUtil.salvarPreferencias();
 	}
 }

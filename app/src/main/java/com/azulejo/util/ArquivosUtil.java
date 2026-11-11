@@ -99,39 +99,79 @@ public class ArquivosUtil {
 		return alvo.delete();
 	}
 
+	// salva só o que estiver definido (atual e moduloAtual podem ser null)
+	// grava num .tmp e renomeia, assim uma falha no meio não apaga as preferências antigas
 	public static void salvarPreferencias() {
-		File destino = new File(InicioActivity.raiz+"/usuario/preferencias.bin");
-		destino.getParentFile().mkdirs();
-		try {
-			DataOutputStream dos = new DataOutputStream(
-				new FileOutputStream(destino)
-			);
-			BinConjunto bin = new BinConjunto();
+		if(InicioActivity.raiz == null) return;
+
+		File destino = new File(InicioActivity.raiz + "/usuario/preferencias.bin");
+		File temporario = new File(InicioActivity.raiz + "/usuario/preferencias.bin.tmp");
+		File pai = destino.getParentFile();
+		if(pai != null) pai.mkdirs();
+
+		BinConjunto bin = new BinConjunto();
+		if(GerenciadorArquivos.atual != null)
 			bin.defString("projeto:atual", GerenciadorArquivos.atual.getAbsolutePath());
+		if(InicioActivity.moduloAtual != null)
 			bin.defString("projeto:modulo", InicioActivity.moduloAtual.getAbsolutePath());
+
+		DataOutputStream dos = null;
+		boolean ok = false;
+		try {
+			dos = new DataOutputStream(new FileOutputStream(temporario));
 			bin.salvar(dos);
 			dos.flush();
-			dos.close();
+			ok = true;
 		} catch(IOException e) {
-			System.out.println("[ERRO]: ao salvar preferencias: "+e.getMessage());
+			System.out.println("[ERRO]: ao salvar preferencias: " + e.getMessage());
+		} finally {
+			if(dos != null) {
+				try {
+					dos.close();
+				} catch(IOException e) {
+					ok = false;
+				}
+			}
+		}
+
+		if(ok) {
+			if(destino.exists()) destino.delete();
+			if(!temporario.renameTo(destino)) {
+				System.out.println("[ERRO]: ao salvar preferencias: nao foi possivel renomear o arquivo temporario");
+			}
+		} else {
+			temporario.delete();
 		}
 	}
 
 	// nao faz nada se o arquivo ainda nao existir(primeira execucao)
 	public static void carregarPreferencias() {
-		File destino = new File(InicioActivity.raiz+"/usuario/preferencias.bin");
+		if(InicioActivity.raiz == null) return;
+
+		File destino = new File(InicioActivity.raiz + "/usuario/preferencias.bin");
 		if(!destino.isFile()) return;
+
+		DataInputStream dis = null;
 		try {
-			DataInputStream dis = new DataInputStream(
-				new FileInputStream(destino)
-			);
+			dis = new DataInputStream(new FileInputStream(destino));
 			BinConjunto bin = new BinConjunto();
 			bin.carregar(dis);
-			GerenciadorArquivos.atual = new File(bin.lerString("projeto:atual"));
-			InicioActivity.moduloAtual = new File(bin.lerString("projeto:modulo"));
-			dis.close();
+
+			// cada chave pode não ter sido salva
+			String atual = bin.lerString("projeto:atual");
+			String modulo = bin.lerString("projeto:modulo");
+			if(atual != null) GerenciadorArquivos.atual = new File(atual);
+			if(modulo != null) InicioActivity.moduloAtual = new File(modulo);
 		} catch(IOException e) {
-			System.out.println("[ERRO]: ao carregar preferencias: "+e.getMessage());
+			System.out.println("[ERRO]: ao carregar preferencias: " + e.getMessage());
+		} finally {
+			if(dis != null) {
+				try {
+					dis.close();
+				} catch(IOException e) {
+					// ignora
+				}
+			}
 		}
 	}
 }

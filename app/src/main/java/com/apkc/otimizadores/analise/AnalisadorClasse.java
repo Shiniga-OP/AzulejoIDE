@@ -44,6 +44,7 @@ public class AnalisadorClasse {
 		public String descritor;
 		public int inicioCodigo = -1;
 		public int tamCodigo;
+		public boolean[] alvos;
 		public final List<Instrucao> instrucoes = new ArrayList<Instrucao>();
 	}
 
@@ -156,8 +157,17 @@ public class AnalisadorClasse {
 					m.tamCodigo = tamCodigo;
 					final byte[] codigo = new byte[tamCodigo];
 					entrada.readFully(codigo);
+					m.alvos = new boolean[tamCodigo + 1];
 					lerInstrucoes(codigo, m);
-					pular(entrada, tamAtributo - 8 - tamCodigo);
+					final int qtdExcecoes = entrada.readUnsignedShort();
+					for(int k = 0; k < qtdExcecoes; k++) {
+						entrada.readUnsignedShort();
+						entrada.readUnsignedShort();
+						final int tratador = entrada.readUnsignedShort();
+						entrada.readUnsignedShort();
+						marcar(m, tratador);
+					}
+					pular(entrada, tamAtributo - 8 - tamCodigo - 2 - qtdExcecoes * 8);
 				} else {
 					pular(entrada, tamAtributo);
 				}
@@ -220,7 +230,31 @@ public class AnalisadorClasse {
 			}
 			ins.tam = tam;
 			m.instrucoes.add(ins);
+			marcarAlvos(codigo, i, m);
 			i += tam;
+		}
+	}
+
+	public static void marcar(Metodo m, int pos) {
+		if(pos >= 0 && pos < m.alvos.length) m.alvos[pos] = true;
+	}
+
+	public static void marcarAlvos(byte[] c, int i, Metodo m) {
+		final int op = c[i] & 0xFF;
+		if((op >= 0x99 && op <= 0xA8) || op == 0xC6 || op == 0xC7) {
+			marcar(m, i + (short)(((c[i + 1] & 0xFF) << 8) | (c[i + 2] & 0xFF)));
+		} else if(op == 0xC8 || op == 0xC9) {
+			marcar(m, i + lerInt(c, i + 1));
+		} else if(op == 0xAA) {
+			final int inicio = alinhar(i);
+			marcar(m, i + lerInt(c, inicio));
+			final int qtd = lerInt(c, inicio + 8) - lerInt(c, inicio + 4) + 1;
+			for(int k = 0; k < qtd; k++) marcar(m, i + lerInt(c, inicio + 12 + k * 4));
+		} else if(op == 0xAB) {
+			final int inicio = alinhar(i);
+			marcar(m, i + lerInt(c, inicio));
+			final int qtd = lerInt(c, inicio + 4);
+			for(int k = 0; k < qtd; k++) marcar(m, i + lerInt(c, inicio + 8 + k * 8 + 4));
 		}
 	}
 

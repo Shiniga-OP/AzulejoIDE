@@ -25,6 +25,7 @@ public class PasseDupArmazena implements Passe {
 				final int slotA = slotDoStore(a.codigo);
 				if(slotA < 0) continue;
 				if(slotDoLoad(b.codigo) != slotA) continue;
+				if(m.alvos[b.pos]) continue;
 
 				// xstore_N seguido de xload_N da mesma variável, sem nada no meio:
 				// dup (ou dup2 p/ long/double) antes do store deixa a copia na pilha,
