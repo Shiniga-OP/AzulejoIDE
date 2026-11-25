@@ -14,6 +14,8 @@ public abstract class Editor {
 	public float rolamentoY;
 	public float rolamentoX;
 	public float ESPACO_TOPO;
+	
+	public Runnable aoAceitarSugestao;
 
     public abstract void abrirTeclado();
     public abstract void att();

@@ -29,6 +29,9 @@ import com.uniditor.Util;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import com.uniditor.completar.CompletadorPalavras;
+import com.uniditor.completar.CompletadorJars;
+import com.uniditor.completar.IndiceJars;
 
 public class InicioActivity extends Activity {
 	public Logs logs;
@@ -56,14 +59,26 @@ public class InicioActivity extends Activity {
 		}
 		androidJar = raiz + "/android.jar";
 		lambdasJar = null; // raiz + "/core-lambda-stubs.jar";
+		
+		final TokenizadorJava tokJava = new TokenizadorJava();
 
 		visaoEditor = new VisaoEditor(
 			new Canvas(
 				0xFFFFFFFF, // cor das formas
 				0xFF1E1E1E // cor do fundo
 			), // renderizador
-			new TokenizadorJava() // regras de sintaxe
+			tokJava // regras de sintaxe
 		);
+		final CompletadorJars completadorJars = new CompletadorJars(new CompletadorPalavras(tokJava.PALAVRAS_CHAVE, tokJava.TIPOS));
+		visaoEditor.completador = completadorJars;
+		new Thread(new Runnable() {
+				@Override
+				public void run() {
+					final List<File> jars = new ArrayList<File>();
+					jars.add(new File(androidJar));
+					completadorJars.indice = new IndiceJars(jars);
+				}
+			}).start();
 		editor = new EditorAndroidCanvas(this, visaoEditor);
 
 		visaoEditor.render.defFonte(

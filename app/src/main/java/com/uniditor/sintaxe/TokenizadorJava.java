@@ -9,15 +9,18 @@ import java.util.List;
 public class TokenizadorJava implements Tokenizador {
     // cores do tema
     public int COR_PRE_PROCESSADOR = Cor.ROXO;
-	public int COR_IDENTIFICADOR = 0xFFABB2BF;
-	public int COR_STRING = Cor.VERDE;
-	public int COR_NUMERO = 0xFFD19A66;
-	public int COR_TIPO = Cor.ROXO;
-	public int COR_OPERADOR = 0xFF56B6C2;
-	public int COR_COMENTARIO = 0xFF5C6370;
-	public int COR_PALAVRA_CHAVE = Cor.ROXO;
-	public int COR_SEPARADOR = 0xFFABB2BF;
-	public final List<Token> cores = new ArrayList<>();
+    public int COR_IDENTIFICADOR = 0xFFABB2BF;
+    public int COR_STRING = Cor.VERDE;
+    public int COR_NUMERO = 0xFFD19A66;
+    public int COR_TIPO = Cor.ROXO;
+    public int COR_OPERADOR = 0xFF56B6C2;
+    public int COR_COMENTARIO = 0xFF5C6370;
+    public int COR_PALAVRA_CHAVE = Cor.ROXO;
+    public int COR_SEPARADOR = 0xFFABB2BF;
+    public int COR_CLASSE = 0xFFE5C07B;
+    public int COR_CONSTANTE = 0xFFD19A66;
+    public int COR_ANOTACAO = 0xFFE06C75;
+    public final List<Token> cores = new ArrayList<>();
 
     public final String[] TIPOS = {
         "void", "int", "float", "double", "long", "char", "boolean",
@@ -26,7 +29,7 @@ public class TokenizadorJava implements Tokenizador {
     public final String[] PALAVRAS_CHAVE = {
         "if", "else", "for", "while", "do", "switch", "case", "break",
         "continue", "return", "class", "import", "package", "enum",
-		"public", "private", "protected", "abstract",
+        "public", "private", "protected", "abstract",
         "new", "this", "final", "volatile", "static", "override",
         "true", "false", "null", "instanceof", "inline", "implements", "extends"
     };
@@ -58,9 +61,9 @@ public class TokenizadorJava implements Tokenizador {
             final char c = linha.charAt(i);
 
             if(c == ' ' || c == '\t') {
-				i++;
-				continue;
-			}
+                i++;
+                continue;
+            }
             // comentario de linha
             if(c == '/' && i + 1 < n && linha.charAt(i + 1) == '/') {
                 cores.add(new Token(i, n, COR_COMENTARIO, false, true)); // italico mas não negrito
@@ -79,18 +82,26 @@ public class TokenizadorJava implements Tokenizador {
                     continue;
                 }
             }
+            // anotação: @Override, @SuppressWarnings, @android.annotation.TargetApi
+            if(c == '@' && i + 1 < n && Character.isLetter(linha.charAt(i + 1))) {
+                final int inicio = i;
+                i++;
+                while(i < n && (Character.isLetterOrDigit(linha.charAt(i)) || linha.charAt(i) == '_' || linha.charAt(i) == '.')) i++;
+                cores.add(new Token(inicio, i, COR_ANOTACAO, false, true));
+                continue;
+            }
             // string aspas duplas
             if(c == '"') {
                 int fim = i + 1;
                 while(fim < n) {
                     if(linha.charAt(fim) == '\\') {
-						fim += 2;
-						continue;
-					}
-                    if(linha.charAt(fim) == '"')  {
-						fim++;
-						break;
-					}
+                        fim += 2;
+                        continue;
+                    }
+                    if(linha.charAt(fim) == '"') {
+                        fim++;
+                        break;
+                    }
                     fim++;
                 }
                 cores.add(new Token(i, fim, COR_STRING));
@@ -100,15 +111,15 @@ public class TokenizadorJava implements Tokenizador {
             // char aspas simples
             if(c == '\'') {
                 int fim = i + 1;
-                while (fim < n) {
+                while(fim < n) {
                     if(linha.charAt(fim) == '\\') {
-						fim += 2;
-						continue;
-					}
+                        fim += 2;
+                        continue;
+                    }
                     if(linha.charAt(fim) == '\'') {
-						fim++;
-						break;
-					}
+                        fim++;
+                        break;
+                    }
                     fim++;
                 }
                 cores.add(new Token(i, fim, COR_STRING));
@@ -128,31 +139,29 @@ public class TokenizadorJava implements Tokenizador {
                 cores.add(new Token(inicio, i, COR_NUMERO));
                 continue;
             }
-            // identificador/palavra-chave/tipo
-            // identificador/palavra-chave/tipo/função
-			if(Character.isLetter(c) || c == '_') {
-				int inicio = i;
-				while(i < n && (Character.isLetterOrDigit(linha.charAt(i)) || linha.charAt(i) == '_')) i++;
-				String palavra = linha.substring(inicio, i);
+            // identificador/palavra-chave/tipo/classe/função
+            if(Character.isLetter(c) || c == '_') {
+                int inicio = i;
+                while(i < n && (Character.isLetterOrDigit(linha.charAt(i)) || linha.charAt(i) == '_')) i++;
+                String palavra = linha.substring(inicio, i);
 
-				// pula espaços para ver o que vem depois
-				int proximo = i;
-				while(proximo < n && (linha.charAt(proximo) == ' ' || linha.charAt(proximo) == '\t')) proximo++;
+                // pula espaços para ver o que vem depois
+                int proximo = i;
+                while(proximo < n && (linha.charAt(proximo) == ' ' || linha.charAt(proximo) == '\t')) proximo++;
 
-				if(eTipo(palavra)) {
-					cores.add(new Token(inicio, i, COR_TIPO, false, false));
-					continue;
-				} else if(ePalavraChave(palavra)) {
-					cores.add(new Token(inicio, i, COR_PALAVRA_CHAVE, true, false));
-					continue;
-				} else if(proximo < n && linha.charAt(proximo) == '(') {
-					cores.add(new Token(inicio, i, Cor.AZUL)); // azul para funções
-					continue;
-				} else {
-					cores.add(new Token(inicio, i, COR_IDENTIFICADOR));
-					continue;
-				}
-			}
+                if(eTipo(palavra)) {
+                    cores.add(new Token(inicio, i, COR_TIPO, false, false));
+                } else if(ePalavraChave(palavra)) {
+                    cores.add(new Token(inicio, i, COR_PALAVRA_CHAVE, true, false));
+                } else if(Character.isUpperCase(palavra.charAt(0))) {
+                    cores.add(new Token(inicio, i, eConstante(palavra) ? COR_CONSTANTE : COR_CLASSE));
+                } else if(proximo < n && linha.charAt(proximo) == '(') {
+                    cores.add(new Token(inicio, i, Cor.AZUL)); // azul para funções
+                } else {
+                    cores.add(new Token(inicio, i, COR_IDENTIFICADOR));
+                }
+                continue;
+            }
             // separadores
             if("(){}[];,".indexOf(c) >= 0) {
                 cores.add(new Token(i, i + 1, COR_SEPARADOR));
@@ -183,13 +192,24 @@ public class TokenizadorJava implements Tokenizador {
         return cores.toArray(new Token[0]);
     }
 
+    // duas ou mais letras, todas maiusculas(digitos e _ valem): MAX_SUGESTOES, ID
+    public boolean eConstante(String s) {
+        if(s.length() < 2) return false;
+        for(int i = 0; i < s.length(); i++) {
+            if(Character.isLowerCase(s.charAt(i))) return false;
+        }
+        return true;
+    }
+
     public boolean eTipo(String s) {
         for(String t : TIPOS) if(t.equals(s)) return true;
         return false;
     }
 
     public boolean ePalavraChave(String s) {
-        for(String c : PALAVRAS_CHAVE) if(c.equals(s)) return true;
+        for(String c : PALAVRAS_CHAVE) {
+            if(c.equals(s)) return true;
+        }
         return false;
     }
 }

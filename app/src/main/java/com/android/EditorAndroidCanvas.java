@@ -166,6 +166,13 @@ public class EditorAndroidCanvas extends View {
 				return getContext().getCacheDir();
 			}
 		};
+		
+		editor.aoAceitarSugestao = new Runnable() {
+			@Override
+			public void run() {
+				reiniciarTeclado();
+			}
+		};
     }
 
     public void selecionarPalavra(int linha, int coluna) {
@@ -751,5 +758,15 @@ public class EditorAndroidCanvas extends View {
 		redesenhoAgendado = false;
 		if(modoAcao != null) modoAcao.finish();
 		editor.liberar();
+	}
+	
+	// o editor mexeu no texto por fora do teclado: descarta a composição e ressincroniza
+	public void reiniciarTeclado() {
+		composLinha = -1;
+		composInicio = -1;
+		composFim = -1;
+		final InputMethodManager imm = (InputMethodManager)getContext()
+			.getSystemService(Context.INPUT_METHOD_SERVICE);
+		if(imm != null) imm.restartInput(this);
 	}
 }
